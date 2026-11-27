@@ -169,14 +169,14 @@ with tab_sum:
             "Per year": [cur["county_property_tax"], cur["county_sales_tax"], cur["county_revenue"], cur["school_property_tax"],
                          cur["school_state_aid_net"], cur["school_net"], cur["total_annual_value"]]})
         lines["Per home"] = lines["Per year"] / homes
-        st.dataframe(lines.style.format({"Per year": usd, "Per home": usd}), hide_index=True, use_container_width=True)
+        st.dataframe(lines.style.format({"Per year": usd, "Per home": usd}), hide_index=True)
         st.bar_chart(lines.iloc[[0, 1, 3, 4]].set_index("Source of value")["Per year"], height=260)
     with right:
         st.markdown(f"**{YEARS}-year value by property tax option**")
         st.dataframe(pd.DataFrame({"Option": ["No abatement", "5-year phase-in", f"PILOT at {row['pilot_rate']:.0%}"],
                                    "Value": [cur[f"total_{YEARS}yr_no_abatement"], cur[f"total_{YEARS}yr_phase_in"],
                                              cur[f"total_{YEARS}yr_pilot"]]}).style.format({"Value": usd}),
-                     hide_index=True, use_container_width=True)
+                     hide_index=True)
         st.markdown("**One-time and people**")
         st.dataframe(pd.DataFrame({
             "Measure": ["Building department savings (one-time)", "Jobs in the construction year", "Local jobs supported each year",
@@ -184,7 +184,7 @@ with tab_sum:
             "Value": [usd(cur["inspection_offset"]), f"{cur['construction_year_total_jobs']:.0f}",
                       f"{cur['ongoing_jobs_supported']:.0f}", usd(cur["ongoing_jobs_earnings"]), f"{cur['new_residents']:.0f}",
                       f"{cur['employed_residents_added']:.0f}", f"{cur['new_students']:.0f}"]}),
-            hide_index=True, use_container_width=True)
+            hide_index=True)
         st.markdown("**County rates used**")
         school_txt = ("no separate school levy (schools funded through the county tax)" if pd.isna(row["school_mill_rate"])
                       else f"{row['school_mill_rate_applied']:.2f} school mills applied")
@@ -198,7 +198,7 @@ with tab_sens:
     grid = pd.DataFrame({CASES[c] if c != "county" else f"County estimate ({row['capacity_flag']})":
                          [compute(row, h, price, c)["total_annual_value"] for h in HOME_OPTIONS.values()] for c in CASES},
                         index=list(HOME_OPTIONS))
-    st.dataframe(grid.style.format(usd), use_container_width=True)
+    st.dataframe(grid.style.format(usd))
     st.bar_chart(grid, height=300)
     st.markdown(f"**Total annual value by average sales price** ({homes} homes, {CASES[case].lower()})")
     prices = np.arange(PRICE_MIN, PRICE_MAX + 1, 10_000)
@@ -215,7 +215,7 @@ with tab_sens:
                                                ("School at 85% of capacity", 150, own_price, "under"),
                                                ("School at 110% of capacity", 150, own_price, "over")]])
     st.markdown("**Syllabus sensitivity cases** (one change at a time from the base)")
-    st.dataframe(syl.style.format({"Total annual value": usd}), hide_index=True, use_container_width=True)
+    st.dataframe(syl.style.format({"Total annual value": usd}), hide_index=True)
 
 with tab_cmp:
     scope = st.radio("Counties", [f"All {state} Tier 1 / Tier 2 counties", "All 434 Tier 1 / Tier 2 counties"], horizontal=True)
@@ -228,7 +228,7 @@ with tab_cmp:
                           "School district": res["school_net"], f"{YEARS}-yr (phase-in)": res[f"total_{YEARS}yr_phase_in"],
                           "Capacity estimate": pool["capacity_flag"]})
     money = ["Avg price", "Total annual value", "County government", "School district", f"{YEARS}-yr (phase-in)"]
-    st.dataframe(table.style.format({c: usd for c in money}), hide_index=True, use_container_width=True, height=480)
+    st.dataframe(table.style.format({c: usd for c in money}), hide_index=True, height=480)
     st.download_button("Download this table (CSV)", table.to_csv(index=False).encode(), "lagom_county_comparison.csv", "text/csv")
 
 with tab_about:
