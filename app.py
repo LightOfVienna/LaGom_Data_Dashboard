@@ -21,6 +21,7 @@ SNAPSHOT = APP_DIR / "data" / "dashboard_counties.csv"
 YEARS, PHASE_FACTOR = 10, 8.0          # 10-year horizon; 5-year phase-in 20/40/60/80% then 100% = 8 full years of tax
 HOME_OPTIONS = {"100 homes": 100, "150 homes (standard)": 150, "200 homes": 200}
 PRICE_MIN, PRICE_MAX, PRICE_STEP = 150_000, 500_000, 5_000
+DEFAULT_SIZE = "150 homes (standard)"
 CASES = {"county": "County estimate", "under": "Under 85% of capacity", "near": "85-100% of capacity",
          "over": "Over capacity (about 110%)"}
 
@@ -111,6 +112,13 @@ def usd(x, short=False):
     return f"{sign}${x:,.0f}"
 
 
+def reset_to_county_normal(price_key, default_price):
+    """Back to the county's normal scenario: 150 homes, the county's average price, its own capacity estimate."""
+    st.session_state["homes_choice"] = DEFAULT_SIZE
+    st.session_state[price_key] = default_price
+    st.session_state["capacity_case"] = "county"
+
+
 # ------------------------------------------------------------------------------------------------ page
 st.set_page_config(page_title="Lagom Fiscal Impact Dashboard", layout="wide")
 data, source = load_data()
@@ -125,18 +133,30 @@ with st.sidebar:
     pick = st.selectbox("County", labels, index=0)
     row = in_state.iloc[labels.index(pick)]
 
-    size_label = st.radio("Sensitivity: community size", list(HOME_OPTIONS), index=1)
+    st.session_state.setdefault("homes_choice", DEFAULT_SIZE)
+    size_label = st.radio("Sensitivity: community size", list(HOME_OPTIONS), key="homes_choice")
     homes = HOME_OPTIONS[size_label]
 
     own_price = float(row["avg_home_price"])
     default_price = int(min(max(round(own_price / PRICE_STEP) * PRICE_STEP, PRICE_MIN), PRICE_MAX))
-    price = st.slider("Average sales price", PRICE_MIN, PRICE_MAX, default_price, PRICE_STEP, format="$%d")
-    if price == default_price:
-        price = own_price                  # slider left at the default: use the county's exact average
+    price_key = f"price_{row['county_fips']}"            # each county keeps its own price setting
+    st.session_state.setdefault(price_key, default_price)
+    price = st.slider("Average sales price", PRICE_MIN, PRICE_MAX, step=PRICE_STEP, format="$%d", key=price_key)
+    at_default_price = price == default_price
+    if at_default_price:
+        price = own_price                  # slider at the default: use the county's exact average
     st.caption(f"County average: {usd(own_price)}. Syllabus sensitivity: $220,000 vs $280,000.")
 
     case_labels = {k: (f"{v}: {row['capacity_flag']}" if k == "county" else v) for k, v in CASES.items()}
-    case = st.selectbox("School district capacity", list(CASES), format_func=lambda k: case_labels[k])
+    st.session_state.setdefault("capacity_case", "county")
+    case = st.selectbox("School district capacity", list(CASES), format_func=lambda k: case_labels[k], key="capacity_case")
+
+    at_normal = size_label == DEFAULT_SIZE and at_default_price and case == "county"
+    st.button("Reset to county normal", on_click=reset_to_county_normal, args=(price_key, default_price),
+              disabled=at_normal, type="primary",
+              help="Back to 150 homes, the county's average sales price and its own school capacity estimate")
+    if at_normal:
+        st.caption("Showing the county normal: 150 homes, county average price, county capacity estimate.")
     st.divider()
     st.caption(f"Data: {source}. {len(data)} Tier 1 / Tier 2 counties.")
 
